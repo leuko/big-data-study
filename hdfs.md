@@ -1,5 +1,12 @@
 # HDFS学习笔记
 
+## 安装下载
+
+CDH版本的好处，已经帮你解决版本兼容问题
+ 
+下载CDH版本地址：`http://archive.cloudera.com/cdh5/cdh/5/`
+
+
 ## NameNode:
 
  `NameNode`的内存中记录的元数据信息为：文件目录结构，副本数，block的编号，block编号对应的DataNode地址，例如 */test/a.log, 3, {b1,b2,b3},[{b1:[h0,h1,h2]},…]*。
