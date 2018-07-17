@@ -17,7 +17,7 @@
             <configuration>
                 <archive>
                     <manifest>
-                        <mainClass>com.zhimei360.App</mainClass>
+                        <mainClass>com.example.App</mainClass>
                     </manifest>
                 </archive>
                 <descriptorRefs>
