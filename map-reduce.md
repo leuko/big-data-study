@@ -139,4 +139,4 @@ MultipleOutputs.addNamedOutput(Job job, String namedOutput, Class<? extends Outp
 ## 10. 小文件处理
 
   Hadoop Archive
-  命令：```shell hadoop archive -archiveName <NAME>.har -p <parent path> <dest>
+  命令：```shell hadoop archive -archiveName <NAME>.har -p <parent path> <dest>```
