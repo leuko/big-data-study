@@ -459,13 +459,16 @@
 	1.在服务器端开启HiveServer2服务
 		./hive --service hiveserver2
 
-	2.创建本地工程，导入jar包
-		导入hive\lib目录下的hive-jdbc-1.2.0-standalone.jar
-		导入hadoop-2.7.1\share\hadoop\common下的hadoop-common-2.7.1.jar
+	2.创建POM工程，依赖（注意版本）
+		<dependency>
+		      <groupId>org.apache.hive</groupId>
+		      <artifactId>hive-jdbc</artifactId>
+		      <version>1.1.1</version>
+		    </dependency>
 
 	3.编写jdbc代码执行
 		Class.forName("org.apache.hive.jdbc.HiveDriver");
-		Connection conn = DriverManager.getConnection("jdbc:hive2://192.168.242.101:10000/park","root","root");
+		Connection conn = DriverManager.getConnection("jdbc:hive2://localhost:10000/default","","");
 		Statement statement = conn.createStatement();
 		//statement.executeUpdate("create table x2xx (id int,name string)");
 		//其他sql语句...
