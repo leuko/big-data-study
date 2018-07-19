@@ -49,6 +49,40 @@ producers通过网络将消息发送到Kafka集群，集群向消费者提供消
 
 
 
+ZooKeeper保存的信息：
+
+```shell
+#进入ZooKeeper
+./zkCli.sh
+#注意各节点名复数为节点下有节点
+ls / 
+#[cluster, controller, controller_epoch, brokers, admin, isr_change_notification, consumers, log_dir_event_notification, latest_producer_id_block, config]
+ls /brokers
+#[ids, topics, seqid]
+get /brokers/ids/0
+#{"listener_security_protocol_map":{"PLAINTEXT":"PLAINTEXT"},"endpoints":["PLAINTEXT://ziqitong:9092"],"jmx_port":-1,"host":"ziqitong","timestamp":"1531994116110","port":9092,"version":4}
+ls /brokers/topics
+#主题：[test]
+get /brokers/topics/test/partitions/0/state
+# 分区的状态:{"controller_epoch":1,"leader":0,"version":1,"leader_epoch":0,"isr":[0]}
+
+# 消费者
+ls /consumers
+#[console-consumer-78530]
+ls /consumers/console-consumer-78530
+#ls consumers的结果：[ids, owners, offsets]
+ls /consumers/console-consumer-78530/owners
+#会得出主题 [test]
+```
+
+
+
+可得出结论：
+
+> Producers不需要ZooKeeper注册，Broker和Consumers需要ZooKeeper注册。
+
+
+
 ## 三、Topics、Producers、Consumers
 
 ### 1. Topics
