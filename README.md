@@ -10,6 +10,8 @@
 
 * [Hbase学习笔记](hbase.md)
 
-* [kafka学习笔记](kafka.md)
+* [Kafka学习笔记](kafka.md)
 
-* [spark学习笔记](spark.md)
+* [Spark学习笔记](spark.md)
+
+* [ZooKeeper学习笔记](zookeeper.md)
