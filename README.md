@@ -15,3 +15,5 @@
 * [Spark学习笔记](spark.md)
 
 * [ZooKeeper学习笔记](zookeeper.md)
+
+* [Scala学习笔记](scala.md)
