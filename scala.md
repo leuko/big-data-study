@@ -296,7 +296,14 @@ object Demo03 {
 1. 如果函数没有 = ，则一律返回值类型都是 Unit类型
 2. scala函数默认的访问权限是public。此外，可以加private或protected
 
+3. scala集合转变参：
 
+```scala
+Array( 1 to 10 : _*)
+```
+
+4. scala函数复制
+`val f = func _`
 
 ## 匿名函数
 
