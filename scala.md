@@ -1,5 +1,270 @@
 # Scala学习笔记
 
+## Scala类型系统编程
+
+1. `上边界`表达了泛型的类型必须是某种类型或者某种类的子类，语法为`<:`, 这里的一个新的现象是对类型进行限定；
+
+   ```scala
+   class Person
+   class Worker extends Person
+   class Student extends Worker
+   class Dog
+   class Factory[T <: Worker](obj:T)
+   
+   val p = new Person
+   val w = new Worker
+   val s = new Student
+   val d = new Dog
+   
+   new Factory[Person](w) // 错误，Person不是Worker类型或子类
+   
+   //若不指定泛型，则泛型默认为Worker
+   new Factory(p) // 错误，p不是Worker类型或子类
+   new Factory(w) // 正确，w是Worker类型
+   new Factory(s) // 正确，s是Worker的子类
+   new Factory(d) // 错误，d不是Worker类型或子类
+   
+   new Factory[Student](p) // 错误，p不是Student类型或子类
+   new Factory[Student](w) // 错误，w不是Student类型或子类
+   new Factory[Student](s) // 正确，s是Student类型或子类
+   new Factory[Student](d) // 错误，d不是Student类型或子类
+   ```
+
+   
+
+2. `下边界`表达了泛型的类型必须是某种类型或者某种类的父类，语法为`>:`
+
+   ```scala
+   class Person
+   class Worker extends Person
+   class Student extends Worker
+   class Dog
+   class Factory[T >: Worker](obj:T)
+   
+   val p = new Person
+   val w = new Worker
+   val s = new Student
+   val d = new Dog
+   
+   new Factory[Student](w) // 错误，Student不是Worker类型或父类
+   
+   //若不指定泛型，都正确(好疑惑)
+   new Factory(p)
+   new Factory(w) 
+   new Factory(s)
+   new Factory(d) 
+   
+   ```
+
+   
+
+3. `View Bounds`：`<%`可以进行某种神秘的转换，把你的类型可以在没有知觉的情况下转换成为目标类型，其实你可以认为 View Bounds是上边界和下边界的加强补充版本，例如在`SparkContext`这个Spark的核心类中有`[T <% Writable]`方式的代码，这个代码所表达的是 T必须是Writable类型的，但是T又没有直接继承自`Writable`接口，此时就需要通过`implicit`的方式来实现这个功能；
+
+   ```scala
+   class Person
+   class Worker extends Person
+   class Student extends Worker
+   class Dog
+   class Factory[T <% Worker](obj:T)
+   
+   val p = new Person
+   val w = new Worker
+   val s = new Student
+   val d = new Dog
+   
+   // implicit def Person2Worker(dog: Person)= new Worker(dog.name)
+   // implicit def dog2Worker(dog: Dog)= new Worker(dog.name)
+   
+   //不指定泛型，默认为Worker
+   new Factory(p) // 若要正确，需取消注释 implicit def Person2Worker
+   new Factory(w) // 正确
+   new Factory(s) // 正确
+   new Factory(d) // 若要正确，需取消注释 implicit def dog2Worker
+   
+   new Factory[Person](p) // 若要正确，需取消注释 implicit def Person2Worker
+   new Factory[Dog](d) // 若要正确，需取消注释 implicit def dog2Worker
+   ```
+
+   
+
+4. `T: ClassTag`例如Spark源码中的RDD `abstract class RDD[T: ClassTag]` 这个其实也是一种类型转换系统，只是在编译的时候类型信息不够，需要借助于JVM的runtime来通过运行时信息获得完整的类型信息，这在Spark中是非常重要的，因为Spark的程序的编程和运行是区分了Driver和Executor的，只有在运行的时候才知道完整的类型信息。
+
+5. `逆变和协变` ：`-T`和`+T`
+
+   ```scala
+   //-T ： 逆变  如果是子类可以实现的话 ，父类也可以实现
+   class Meeting1[-T]
+   // +T 协变 如果 父类可以实现的功能 那么子类也可以实现 就是协变
+   class Meeting2[+T]
+   
+   class Engineer
+   class Expert extends Engineer
+   
+   def join(m: Meeting1[Expert]){
+       
+   }
+   
+   join(new Meeting1[Engineer]) // 可以
+   join(new Meeting1[Expert]) // 可以
+   ```
+
+   
+
+6. `Conext Bounds`：`T: Ordering`这种语法必须能够变成`Ordering[T]`这种方式；
+
+   ```scala
+   class Maximum[T:Ordering](val x:T, val y:T){
+       def bigger(implicit ord: Ordering[T]) = {
+           if(ord.compare(x, y) > 0)
+           	x
+           else
+           	y
+       }
+   }
+   
+   new Maximum(1, 2).bigger
+   new Maximum("a", "b").bigger
+   
+   ```
+
+   1. `[_]` 如：占位
+
+
+
+## 隐式转换`implicit`
+
+伴生对象中声名隐式转换
+
+```scala
+  class  Man(val name:String)
+//伴生对象中声名隐式转换
+  object Man{
+    implicit def a2b(man : Man) ={
+      new SuperMan
+    }
+  }
+  class SuperMan {
+    def fly(): Unit ={}
+  }
+
+val man = new Man("a")
+man.fly()
+```
+
+```scala
+class  Man(val name:String)
+class SuperMan {
+    def fly(): Unit ={}
+}
+// 隐式转换不在伴生对象中
+object implicts{
+    implicit def a2b(man : Man) ={
+      new SuperMan
+    }
+  }
+
+val man = new Man("a")
+import implicts._ // 隐式转换不在伴生对象中，需先导入
+man.fly()
+```
+
+参数隐式转换
+
+```scala
+def talk(from:String)(implicit to:String) {
+    println(from+":"+ to)
+}
+
+implicit val to = "spark"
+//调用talk时，若没传参数to，会从上下文中找隐式变量implicit val to
+talk("scala") // print scala:spark
+```
+
+
+
+## 偏函数 partial function
+
+```scala
+case class Person(name:String, age:Int)
+
+val pf:PartialFunction[Any, Any] = {
+    case x:Int => {
+        println(x)
+    }
+    case (x, y) =>{
+        println(x+","+y)
+    }
+    case Person("spark", 12) => {
+        println("spark")
+    }
+    case Person(name, age) => {
+        println(name, age)
+    }
+}
+
+pf(1)
+pf((1,2))
+
+// map中的偏函数
+val list = 1 :: 2:: 3 :: 4:: Nil
+list.map{case i => i+1}.foreach(println)
+```
+
+
+
+
+
+## 异常
+
+```scala
+try{
+    1/0
+}catch {
+    case e:Exception => println(e.getMessage)
+    case _ => println("None")
+}finally{
+    
+}
+```
+
+
+
+## 包
+
+```scala
+import org.apache.hadoop.mapreduce.{InputFormat=>NewInputFormat, Job=>NewHadoppJob} //alias
+class SQLContext private[sql] (val sparkSession: SparkSession){
+    private[this] val my:String = "" // 只有同一个对象中可见，这就是Java的private的含义吧？
+    private[spark] val a:Int = 1 //private[spark]表示这个类只能在包名中含有spark的类中访问
+    private[sql] def func(){ //private[sql]表示这个类只能在包名中含有sql的类中访问
+    }
+}
+```
+
+
+
+## 提取器
+
+```scala
+class Person(var name:String,var age:Int){}
+object Person{
+    def apply( name: String, age: Int): Person = new Person( name, age)
+    def unapply( info:Person)= {
+        Some(("name:"+info.name, "age:"+info.age))
+    }
+}
+
+var p = Person("spark", 30) // 调用Person.apply("spark", 30)工厂构造方法
+var Person(name, age) = p // 调用Person.unapply，提取出变量name和age，与模式匹配相似
+println(name + ", " + age) // name:spark, age:30
+
+val Array(arg1, arg2) = Array(1, 2) //提取
+```
+
+
+
+
+
 ## 变量和常量的声明和使用
 
 1. 变量声明后可以更改，但常量不允许
@@ -295,15 +560,14 @@ object Demo03 {
 
 1. 如果函数没有 = ，则一律返回值类型都是 Unit类型
 2. scala函数默认的访问权限是public。此外，可以加private或protected
-
 3. scala集合转变参：
 
 ```scala
 Array( 1 to 10 : _*)
 ```
 
-4. scala函数复制
-`val f = func _`
+1. scala函数复制
+   `val f = func _`
 
 ## 匿名函数
 
@@ -478,4 +742,3 @@ object Demo02 {
                                                   //> res13: List[(String, Int)] = List((hello,5), (hadoop,2))
 }
 ```
-
