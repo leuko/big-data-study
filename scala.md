@@ -1,5 +1,7 @@
 # Scala学习笔记
 
+
+
 ## Scala类型系统编程
 
 1. `上边界`表达了泛型的类型必须是某种类型或者某种类的子类，语法为`<:`, 这里的一个新的现象是对类型进行限定；
@@ -87,9 +89,48 @@
 
    
 
-4. `T: ClassTag`例如Spark源码中的RDD `abstract class RDD[T: ClassTag]` 这个其实也是一种类型转换系统，只是在编译的时候类型信息不够，需要借助于JVM的runtime来通过运行时信息获得完整的类型信息，这在Spark中是非常重要的，因为Spark的程序的编程和运行是区分了Driver和Executor的，只有在运行的时候才知道完整的类型信息。
+4. `context bound` `T: ClassTag`例如Spark源码中的RDD `abstract class RDD[T: ClassTag]` 这个其实也是一种类型转换系统，只是在编译的时候类型信息不够，需要借助于JVM的runtime来通过运行时信息获得完整的类型信息，这在Spark中是非常重要的，因为Spark的程序的编程和运行是区分了Driver和Executor的，只有在运行的时候才知道完整的类型信息。
 
-5. `逆变和协变` ：`-T`和`+T`
+   ```scala
+   class Maximum[T:Ordering](val x:T, val y:T){
+       def bigger(implicit ord: Ordering[T]) = {
+           if(ord.compare(x, y) > 0)
+           	x
+           else
+           	y
+       }
+   }
+   
+   new Maximum(1, 2).bigger
+   new Maximum("a", "b").bigger
+   
+   
+   ```
+
+   ```scala
+   // 用法使用
+   class Person[T]{
+       def say(){}
+   }
+   class Work[T:Person] (){
+       def func(implicit person: Person[T]){
+           person.say
+       }
+   }
+   
+   implicit val p1 = new Person[String]
+   implicit val p2 = new Person[Int]
+   val work1 = new Work[Int]//必须要先声明 implicit val p2 = new Person[Int]，否则报错，如Error:(32, 17) could not find implicit value for evidence parameter of type ScalaDemo.Person[Int]
+   val work2 = new Work[String]//必须要先声明 implicit val p2 = new Person[String]，否则报错
+   // 可通过这种方式获得隐式变量p1：implicitly[Person[String]]
+   
+   ```
+
+
+
+
+
+1. `逆变和协变` ：`-T`和`+T`
 
    ```scala
    //-T ： 逆变  如果是子类可以实现的话 ，父类也可以实现
@@ -110,24 +151,27 @@
 
    
 
-6. `Conext Bounds`：`T: Ordering`这种语法必须能够变成`Ordering[T]`这种方式；
-
-   ```scala
-   class Maximum[T:Ordering](val x:T, val y:T){
-       def bigger(implicit ord: Ordering[T]) = {
-           if(ord.compare(x, y) > 0)
-           	x
-           else
-           	y
-       }
-   }
-   
-   new Maximum(1, 2).bigger
-   new Maximum("a", "b").bigger
-   
-   ```
-
    1. `[_]` 如：占位
+
+
+
+
+
+## 隐式引用(Implicit Import)
+
+Scala会自动为每个程序加上几个隐式引用，就像Java程序会自动加上java.lang包一样。Scala中，以下三个包的内容会隐式引用到每个程序上。所不同的是，Scala还会隐式加进对Predef的引用，这极大方便了程序员的工作。
+
+```scala
+import java.lang._ // in JVM projects, or system namespace in .NET
+import scala._     // everything in the scala package
+import Predef._    // everything in the Predef object
+```
+
+上面三个包，包含了常用的类型和方法。java.lang包包含了常用的java语言类型，如果在.NET环境中，则会引用system命名空间。类似的，scala还会隐式引用scala包，也就是引入常用的scala类型。
+
+> **请注意** 上述三个语句的**顺序**藏着一点玄机。我们知道，通常，如果import进来两个包都有某个类型的定义的话，比如说，同一段程序，即引用了'scala.collection.mutable.Set'又引用了'import scala.collection.immutable.Set'则编译器会提示无法确定用哪一个Set。这里的隐式引用则不同，如果有相同的类型，后面的包的类型会将前一个隐藏掉。比如，java.lang和scala两个包里都有StringBuilder，这种情况下，会使用scala包里定义的那个。java.lang里的定义就被隐藏掉了，除非显示的使用java.lang.StringBuilder。
+
+
 
 
 
@@ -260,6 +304,65 @@ println(name + ", " + age) // name:spark, age:30
 
 val Array(arg1, arg2) = Array(1, 2) //提取
 ```
+
+
+
+## 文件读写
+
+序列化、反序列化
+
+```scala
+def serialize[T](o:T):Array[Byte] = {
+    val bos = new ByteArrayOutputStream()
+    val oos = new ObjectOutputStream(bos)
+    oos.writeObject(o)
+    oos.close
+    bos.toByteArray
+}
+
+def deserizlize[T](bytes:Array[Byte]):T = {
+    val bis = ByteArrayInputStream(bytes)
+    val ois = new ObjectInputStream(bis)
+    ois.readObject.asInstanceOf[T]
+}
+```
+
+```scala
+source.fromFile("")
+```
+
+
+
+## this.type实现链式调用
+
+在写Spark程序的代码中一开始就能看到这代码： `val conf = new SparkConf conf.setAppName("OnlineBlackListFilter").setMaster("local")` 上面  `setAppName`、`setMaster`返回的就是`SparkConf`，所以才能继续使用SparkConf的方法点出方法来。 而要做到这一点的关键就是使方法的返回值是对象本身。
+
+```scala
+class Person {
+    def say():this.type={
+        println("say")
+        this
+    }
+    def eat()={
+        println("eat")
+        this
+    }
+}
+class Man extends Person{
+    def run():this.type={
+        println("run")
+        this.
+    }
+}
+
+val man = new Man
+man.say().run() // 正确
+man.eat().say() // 正确
+man.eat().run() // Error
+//在继承父类中，方法返回类型上使用this.type就可以实现链式调用
+```
+
+
 
 
 
