@@ -183,7 +183,7 @@ import Predef._    // everything in the Predef object
   class  Man(val name:String)
 //伴生对象中声名隐式转换
   object Man{
-    implicit def a2b(man : Man) ={
+    implicit def man2superman(man : Man) ={
       new SuperMan
     }
   }
@@ -192,7 +192,7 @@ import Predef._    // everything in the Predef object
   }
 
 val man = new Man("a")
-man.fly()
+man.fly() // man本没fly方法，但implicit def man2superman后，可调用superman的fly
 ```
 
 ```scala
